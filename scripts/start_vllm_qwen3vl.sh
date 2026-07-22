@@ -12,12 +12,23 @@ if [[ ! -x "$HY2_VLLM_VENV/bin/vllm" ]]; then
   echo "vLLM executable not found: $HY2_VLLM_VENV/bin/vllm" >&2
   exit 1
 fi
+# Probe vLLM with its own CUDA 13 runtime rather than inheriting the HY2
+# training environment's CUDA 12.8 libraries.  On Blackwell this otherwise can
+# make torch.cuda.is_available() falsely report no device.
+export CONDA_PREFIX="$HY2_VLLM_VENV"
+export PATH="$HY2_VLLM_VENV/bin:$PATH"
+export LD_LIBRARY_PATH="$HY2_VLLM_VENV/lib/python3.11/site-packages/nvidia/cu13/lib:$HY2_VLLM_VENV/lib"
 PYTHONPATH= "$HY2_VLLM_VENV/bin/python" "$HY2_PY_ROOT/require_cuda.py" --stage "vLLM Qwen3-VL server"
 
 SESSION="${1:-hy2_vllm}"
+VLLM_DEVICE_EXPORT=""
+if [[ -n "$HY2_VLLM_CUDA_VISIBLE_DEVICES" ]]; then
+  VLLM_DEVICE_EXPORT="export CUDA_VISIBLE_DEVICES='$HY2_VLLM_CUDA_VISIBLE_DEVICES'; "
+fi
 CMD="source '$HY2_SCRIPT_ROOT/env.sh'; \
 export HY2_VLLM_VENV='$HY2_VLLM_VENV'; \
 export CONDA_PREFIX=\"\$HY2_VLLM_VENV\"; \
+${VLLM_DEVICE_EXPORT}\
 unset PYTHONPATH; \
 export PATH=\"\$HY2_VLLM_VENV/bin:\$PATH\"; \
 export LD_LIBRARY_PATH=\"\$HY2_VLLM_VENV/lib/python3.11/site-packages/nvidia/cu13/lib:\$HY2_VLLM_VENV/lib\"; \

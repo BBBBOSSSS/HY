@@ -9,9 +9,10 @@ source "$PIPELINE_ROOT/scripts/env.sh"
 HY2_ENV_PATH="${HY2_ENV_PATH:-$HY2_BUNDLE_ROOT/conda-envs/hyworld2}"
 VLLM_ENV_PATH="${VLLM_ENV_PATH:-$HY2_BUNDLE_ROOT/conda-envs/vllm_qwen}"
 PYTHON_VERSION="${PYTHON_VERSION:-3.11}"
-TORCH_INDEX_URL="${TORCH_INDEX_URL:-https://download.pytorch.org/whl/cu130}"
-TORCH_PACKAGES="${TORCH_PACKAGES:-torch==2.11.0 torchvision==0.26.0 torchaudio==2.11.0}"
+TORCH_INDEX_URL="${TORCH_INDEX_URL:-https://download.pytorch.org/whl/cu128}"
+TORCH_PACKAGES="${TORCH_PACKAGES:-torch==2.7.1 torchvision==0.22.1 torchaudio==2.7.1}"
 VLLM_VERSION="${VLLM_VERSION:-0.23.0}"
+MOGE_COMMIT="${MOGE_COMMIT:-0286b495230a074aadf1c76cc5c679e943e5d1c6}"
 FORCE=0
 DRY_RUN=0
 SKIP_VLLM=0
@@ -27,8 +28,8 @@ usage() {
   --hy2-env PATH        HY2 主环境路径，默认 /root/autodl-tmp/conda-envs/hyworld2
   --vllm-env PATH       vLLM 环境路径，默认 /root/autodl-tmp/conda-envs/vllm_qwen
   --python VERSION      Python 版本，默认 3.11
-  --torch-index URL     PyTorch wheel 源，默认 https://download.pytorch.org/whl/cu130
-  --torch-packages TXT  PyTorch 包版本，默认 torch==2.11.0 torchvision==0.26.0 torchaudio==2.11.0
+  --torch-index URL     PyTorch wheel 源，默认 https://download.pytorch.org/whl/cu128
+  --torch-packages TXT  PyTorch 包版本，默认 torch==2.7.1 torchvision==0.22.1 torchaudio==2.7.1
   --vllm-version VER    vLLM 版本，默认 0.23.0
   --skip-vllm           不创建 vLLM 环境
   --skip-gsplat         不重编译 gsplat CUDA 扩展
@@ -134,54 +135,100 @@ install_hy2_env() {
   pip_install "$HY2_ENV_PATH" --index-url "$TORCH_INDEX_URL" $TORCH_PACKAGES
   pip_install "$HY2_ENV_PATH" \
     diffusers==0.36.0 \
-    transformers==5.12.1 \
+    transformers==5.2.0 \
     accelerate==1.14.0 \
     peft==0.18.1 \
     safetensors==0.8.0 \
     modelscope==1.37.1 \
     "huggingface_hub[cli]==1.20.1" \
-    numpy==2.2.6 \
-    scipy \
+    numpy==1.26.4 \
+    scipy==1.14.1 \
     omegaconf \
     einops \
     kornia \
     openai \
     easydict \
-    timm \
+    timm==1.0.11 \
     Pillow \
     "imageio[ffmpeg]" \
     decord \
     imagesize \
-    opencv-python \
-    matplotlib \
-    scikit-image \
+    opencv-python==4.10.0.84 \
+    matplotlib==3.10.3 \
+    scikit-image==0.25.2 \
     ftfy \
     regex \
     trimesh \
-    plyfile \
+    plyfile==1.0.3 \
     open3d==0.18.0 \
     pycolmap==3.10.0 \
     torchmetrics \
-    loguru \
+    tensorboard \
+    loguru==0.7.3 \
     tqdm \
     viser==1.0.30 \
     tyro==1.0.8 \
     splines \
-    pymeshlab \
+    pymeshlab==2023.12.post2 \
+    rtree==1.4.1 \
     scikit-build-core \
     nanobind \
     pybind11 \
     zim_anything
 
-  pip_install_optional "$HY2_ENV_PATH" cupy-cuda13x==14.1.1
+  # Keep binary CUDA extensions aligned with this project's CUDA 12.8
+  # PyTorch runtime.  zim_anything leaves ONNX Runtime unpinned; newer wheels
+  # require CUDA 13 and prevent Diffusers from importing.
+  pip_install_optional "$HY2_ENV_PATH" \
+    numpy==1.26.4 \
+    cupy-cuda12x==13.6.0 \
+    onnxruntime-gpu==1.20.1
 
   if [[ -d "$HY2_BUNDLE_ROOT/upstream/moge_src/MoGe-main" ]]; then
+    run_bash "git -C '$HY2_BUNDLE_ROOT/upstream/moge_src/MoGe-main' checkout --detach '$MOGE_COMMIT'"
     pip_install "$HY2_ENV_PATH" -e "$HY2_BUNDLE_ROOT/upstream/moge_src/MoGe-main"
   elif [[ -d /root/autodl-tmp/upstream/moge_src/MoGe-main ]]; then
+    run_bash "git -C /root/autodl-tmp/upstream/moge_src/MoGe-main checkout --detach '$MOGE_COMMIT'"
     pip_install "$HY2_ENV_PATH" -e /root/autodl-tmp/upstream/moge_src/MoGe-main
   else
-    pip_install "$HY2_ENV_PATH" "git+https://github.com/microsoft/MoGe.git"
+    pip_install "$HY2_ENV_PATH" "git+https://github.com/microsoft/MoGe.git@$MOGE_COMMIT"
   fi
+}
+
+install_worldgen_extensions() {
+  local arch
+  local flash_arch
+  arch="${TORCH_CUDA_ARCH_LIST:-$(detect_torch_arch || true)}"
+  arch="${arch:-9.0}"
+  flash_arch="${HY2_FLASH_ATTN_CUDA_ARCHS:-${arch//./}}"
+
+  # The upstream shared installation guide requires one FlashAttention
+  # backend.  Use its simpler FlashAttention-2 command and compile against the
+  # same CUDA 12.8 toolkit as torch 2.7.1 (important on Blackwell hosts where a
+  # newer CUDA toolkit may also be installed).
+  run_bash "CUDA_HOME='/usr/local/cuda-12.8' CUDACXX='/usr/local/cuda-12.8/bin/nvcc' FLASH_ATTENTION_FORCE_BUILD='${HY2_FLASH_ATTN_FORCE_BUILD:-TRUE}' FLASH_ATTN_CUDA_ARCHS='$flash_arch' TORCH_CUDA_ARCH_LIST='$arch' MAX_JOBS='${MAX_JOBS:-8}' '$HY2_ENV_PATH/bin/python' -m pip install flash-attn --no-build-isolation"
+
+  # requirements_git.txt: retain the exact upstream revisions.  Prefer the
+  # already-downloaded PyTorch3D tree because a full GitHub clone is large and
+  # fragile on remote machines.
+  pip_install "$HY2_ENV_PATH" --no-build-isolation \
+    "git+https://github.com/nerfstudio-project/nerfview@4538024fe0d15fd1a0e4d760f3695fc44ca72787" \
+    "git+https://github.com/rahul-goel/fused-ssim@328dc9836f513d00c4b5bc38fe30478b4435cbb5" \
+    "git+https://github.com/nianticlabs/spz.git@v3.0.0"
+
+  if [[ -d "$HY2_BUNDLE_ROOT/upstream/pytorch3d_src_git/pytorch3d" ]]; then
+    run_bash "cd '$HY2_BUNDLE_ROOT/upstream/pytorch3d_src_git' && CUB_HOME='/usr/local/cuda-12.8/include' TORCH_CUDA_ARCH_LIST='$arch' FORCE_CUDA=1 '$HY2_ENV_PATH/bin/python' -m pip install -e . --no-build-isolation"
+  else
+    run_bash "CUB_HOME='/usr/local/cuda-12.8/include' TORCH_CUDA_ARCH_LIST='$arch' FORCE_CUDA=1 '$HY2_ENV_PATH/bin/python' -m pip install --no-build-isolation 'git+https://github.com/facebookresearch/pytorch3d.git'"
+  fi
+
+  local navmesh_root="$HY2_WORLDGEN_ROOT/third_party/navmesh"
+  local recast_root="$HY2_WORLDGEN_ROOT/third_party/recastnavigation"
+  if [[ ! -f "$navmesh_root/setup.py" || ! -d "$recast_root/Recast" ]]; then
+    echo "[错误] Recast 子模块不完整，请先在源码根目录执行 git submodule update --init --recursive" >&2
+    return 1
+  fi
+  run_bash "cd '$navmesh_root' && RECAST_PATH='$recast_root' '$HY2_ENV_PATH/bin/python' -m pip install . --no-build-isolation"
 }
 
 install_vllm_env() {
@@ -228,6 +275,7 @@ echo "PyTorch 源：$TORCH_INDEX_URL"
 echo "PyTorch 包：$TORCH_PACKAGES"
 
 install_hy2_env
+install_worldgen_extensions
 install_vllm_env
 rebuild_gsplat
 run_preflight

@@ -5,9 +5,9 @@ This folder replaces the old MVGen / Matrix-style bridge. It uses the HY2.0 offi
 1. Optional panorama generation: use local `Qwen-Image-Edit-2509` base + `HY-Pano-2.0` LoRA by default; the full `HY-Pano-2.0` model remains optional.
 2. WorldNav trajectory generation: `hyworld2/worldgen/traj_generate.py`.
 3. Trajectory rendering: `traj_render.py`.
-4. WorldStereo expansion: `video_gen.py` with local `worldstereo-memory-dmd` by default.
-5. GS data build: `gen_gs_data.py`.
-6. 3DGS training/viewer: `world_gs_trainer.py` and `show_gs.py`.
+4. WorldStereo expansion: `video_gen.py` with `worldstereo-memory-dmd` by default (aligned with sh1_stable12k; non-DMD via `HY2_WORLDSTEREO_MODEL_TYPE=worldstereo-memory`).
+5. GS data build: `gen_gs_data.py` (same `result_name` as Stage04 model type).
+6. 3DGS training: defaults match **sh1_stable12k** (`sh_degree=1`, LPIPS 0.2/0.1, weaker densify, 12000 steps; see `scripts/env.sh`). Viewer: `show_gs.py`. MaskGaussian + anchor on; `HY2_CLEAN_PLY=0`.
 
 This wrapper keeps the upstream WorldStereo default `--align-nframe 8`.
 The trajectory length is still `--nframe 21`, matching the released

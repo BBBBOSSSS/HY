@@ -45,3 +45,9 @@ checkpoints/
 *.tar.gz
 *.tgz
 *.7z
+
+# 情感数据集管线（独立工作，不随 HY2 基线同步）
+数据集涉及代码/
+
+# 调试/一次性实验脚本（默认不同步）
+python/reproduce_mesh_crash.py

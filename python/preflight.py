@@ -53,8 +53,9 @@ CHECKS = [
     ("HY2 code root", Path(os.environ["HY2_CODE_ROOT"])),
     ("worldgen code", Path(os.environ["HY2_WORLDGEN_ROOT"]) / "video_gen.py"),
     ("WorldStereo root", Path(os.environ["WORLDSTEREO_REPO_ID"])),
-    ("WorldStereo DMD config", Path(os.environ["WORLDSTEREO_REPO_ID"]) / "worldstereo-memory-dmd" / "config.json"),
-    ("WorldStereo DMD weights", Path(os.environ["WORLDSTEREO_REPO_ID"]) / "worldstereo-memory-dmd" / "model.safetensors"),
+    # 默认走非 DMD；DMD 权重改为可选（见 OPTIONAL）
+    ("WorldStereo memory config", Path(os.environ["WORLDSTEREO_REPO_ID"]) / "worldstereo-memory" / "config.json"),
+    ("WorldStereo memory weights", Path(os.environ["WORLDSTEREO_REPO_ID"]) / "worldstereo-memory" / "model.safetensors"),
     ("Wan base", Path(os.environ["WORLDSTEREO_BASE_MODEL_PATH"])),
     ("SAM3", Path(os.environ["SAM3_REPO_ID"])),
     ("Qwen3-VL", Path(os.environ["QWEN3_VL_MODEL_PATH"])),
@@ -74,6 +75,14 @@ else:
 OPTIONAL = [
     ("ZIM anything local cache", os.environ.get("NAVER_IV_ZIM_ANYTHING_VITL_PATH")),
     ("GroundingDINO local cache", os.environ.get("IDEA_RESEARCH_GROUNDING_DINO_TINY_PATH")),
+    (
+        "WorldStereo DMD config (optional)",
+        str(Path(os.environ["WORLDSTEREO_REPO_ID"]) / "worldstereo-memory-dmd" / "config.json"),
+    ),
+    (
+        "WorldStereo DMD weights (optional)",
+        str(Path(os.environ["WORLDSTEREO_REPO_ID"]) / "worldstereo-memory-dmd" / "model.safetensors"),
+    ),
 ]
 
 def size(path: Path) -> str:

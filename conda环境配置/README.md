@@ -21,10 +21,10 @@ bash /root/autodl-tmp/pipelines/hy2_hyworld2_official/conda环境配置/setup_co
 默认 PyTorch 栈按当前项目可运行环境配置：
 
 ```text
-torch==2.11.0
-torchvision==0.26.0
-torchaudio==2.11.0
-CUDA wheel 源：https://download.pytorch.org/whl/cu130
+torch==2.7.1
+torchvision==0.22.1
+torchaudio==2.7.1
+CUDA wheel 源：https://download.pytorch.org/whl/cu128
 vllm==0.23.0
 ```
 

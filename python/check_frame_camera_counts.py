@@ -45,7 +45,7 @@ def allowed(camera_count, frame_count):
 def main():
     parser = argparse.ArgumentParser(description="Check HY-World generated-video frame counts against camera.json counts.")
     parser.add_argument("--scene-dir", required=True)
-    parser.add_argument("--result-name", default="worldstereo-memory-dmd")
+    parser.add_argument("--result-name", default="worldstereo-memory")
     args = parser.parse_args()
 
     patterns = [

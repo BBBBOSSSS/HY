@@ -4,13 +4,14 @@ set -euo pipefail
 STAGE_DIR="$(cd "$(dirname "$0")" && pwd)"
 source "$STAGE_DIR/../scripts/env.sh"
 source "$HY2_SCRIPT_ROOT/activate_env.sh"
-NAME=""; NPROC="${NPROC_PER_NODE:-1}"; MODE="vlm-full"; EXPECTED_NFRAME="${HY2_NFRAME:-21}"
+NAME=""; NPROC="${NPROC_PER_NODE:-1}"; MODE="vlm-full"; EXPECTED_NFRAME="${HY2_NFRAME:-21}"; SKIP_EXIST=0
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --name) NAME="$2"; shift 2 ;;
     --nproc) NPROC="$2"; shift 2 ;;
     --mode) MODE="$2"; shift 2 ;;
     --expected-nframe) EXPECTED_NFRAME="$2"; shift 2 ;;
+    --skip-exist) SKIP_EXIST=1; shift ;;
     *) echo "Unknown arg: $1" >&2; exit 2 ;;
   esac
 done
@@ -18,9 +19,25 @@ done
 SCENE_DIR="$HY2_RUN_ROOT/$NAME/scene"
 cd "$HY2_WORLDGEN_ROOT"
 if [[ "$MODE" == "vlm-full" ]]; then export WORLDGEN_SKIP_VLLM=0; else export WORLDGEN_SKIP_VLLM=1; fi
+
+# traj_render.py uses torch.cuda.device_count() as the distributed world size
+# when it splits and gathers frames.  Therefore it must see exactly NPROC GPUs.
+# Scoping it also keeps a separately hosted vLLM GPU out of the renderer.
+STAGE03_VISIBLE_DEVICES="${HY2_STAGE03_CUDA_VISIBLE_DEVICES:-${CUDA_VISIBLE_DEVICES:-}}"
+if [[ -z "$STAGE03_VISIBLE_DEVICES" ]]; then
+  STAGE03_VISIBLE_DEVICES=$(seq -s, 0 $((NPROC - 1)))
+fi
+IFS=',' read -r -a STAGE03_DEVICE_LIST <<< "$STAGE03_VISIBLE_DEVICES"
+if [[ "${#STAGE03_DEVICE_LIST[@]}" -ne "$NPROC" ]]; then
+  echo "Stage03 requires exactly NPROC visible GPUs: nproc=$NPROC CUDA_VISIBLE_DEVICES=$STAGE03_VISIBLE_DEVICES" >&2
+  exit 2
+fi
+export CUDA_VISIBLE_DEVICES="$STAGE03_VISIBLE_DEVICES"
+TRAJ_ARGS=(--target_path "$SCENE_DIR" --llm_addr "$HY2_LLM_ADDR" --llm_port "$HY2_LLM_PORT" --llm_name "$HY2_LLM_NAME")
+[[ "$SKIP_EXIST" == 1 ]] && TRAJ_ARGS+=(--skip_exist)
 {
-  echo "[run_03_traj_render] mode=$MODE expected_nframe=$EXPECTED_NFRAME nproc=$NPROC"
+  echo "[run_03_traj_render] mode=$MODE expected_nframe=$EXPECTED_NFRAME nproc=$NPROC skip_exist=$SKIP_EXIST CUDA_VISIBLE_DEVICES=$CUDA_VISIBLE_DEVICES"
   python "$HY2_PY_ROOT/check_camera_json_counts.py" --scene-dir "$SCENE_DIR" --expected-count "$EXPECTED_NFRAME"
   python "$HY2_PY_ROOT/require_cuda.py" --stage "stage03 trajectory rendering"
-  torchrun --standalone --nproc_per_node "$NPROC" traj_render.py --target_path "$SCENE_DIR" --llm_addr "$HY2_LLM_ADDR" --llm_port "$HY2_LLM_PORT" --llm_name "$HY2_LLM_NAME"
+  torchrun --standalone --nproc_per_node "$NPROC" traj_render.py "${TRAJ_ARGS[@]}"
 } 2>&1 | tee "$HY2_RUN_ROOT/$NAME/logs/03_traj_render.log"

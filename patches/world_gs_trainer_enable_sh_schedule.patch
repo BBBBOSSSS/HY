@@ -1,0 +1,17 @@
+--- a/hyworld2/worldgen/world_gs_trainer.py
++++ b/hyworld2/worldgen/world_gs_trainer.py
+@@ -1086,8 +1086,13 @@ class Runner:
+             if cfg.pose_opt:
+                 camtoworlds = self.pose_adjust(camtoworlds, image_ids)
+ 
+-            # sh schedule
+-            # sh_degree_to_use = min(step // cfg.sh_degree_interval, cfg.sh_degree)
+-            sh_degree_to_use = cfg.sh_degree
++            # sh schedule: climb 0 -> sh_degree every sh_degree_interval steps
++            # (re-enabled for sharper view-dependent appearance when sh_degree > 0)
++            if cfg.sh_degree_interval > 0 and cfg.sh_degree > 0:
++                sh_degree_to_use = min(step // cfg.sh_degree_interval, cfg.sh_degree)
++            else:
++                sh_degree_to_use = cfg.sh_degree
+ 
+             # MaskGaussian: compute mask gate once per step, shared between render and loss

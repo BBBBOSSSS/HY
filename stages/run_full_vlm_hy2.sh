@@ -9,6 +9,7 @@ NAME=""
 IMAGE=""
 PANO=""
 NPROC="${NPROC_PER_NODE:-1}"
+RENDER_NPROC="${HY2_RENDER_NPROC:-}"
 NFRAME="${HY2_NFRAME:-21}"
 STEPS=12000
 PANO_NUM_CANDIDATES="${HY_PANO_NUM_CANDIDATES:-4}"
@@ -21,6 +22,8 @@ VLLM_SESSION="${HY2_VLLM_SESSION:-hy2_vllm}"
 KEEP_VLLM=0
 SKIP_PREFLIGHT=0
 VLLM_START_TIMEOUT="${HY2_VLLM_START_TIMEOUT:-900}"
+STAGE05_NPROC=""
+STAGE06_NPROC=""
 
 usage() {
   cat <<'EOF'
@@ -31,6 +34,7 @@ Options:
   --scene-type indoor|outdoor
   --prompt TEXT
   --nproc N
+  --render-nproc N       Stage 03 renderer processes; defaults to --nproc
   --nframe N
   --steps N
   --pano-num-candidates N
@@ -50,6 +54,7 @@ while [[ $# -gt 0 ]]; do
     --image) IMAGE="$2"; shift 2 ;;
     --panorama) PANO="$2"; shift 2 ;;
     --nproc) NPROC="$2"; shift 2 ;;
+    --render-nproc) RENDER_NPROC="$2"; shift 2 ;;
     --nframe) NFRAME="$2"; shift 2 ;;
     --steps) STEPS="$2"; shift 2 ;;
     --pano-num-candidates) PANO_NUM_CANDIDATES="$2"; shift 2 ;;
@@ -68,6 +73,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 [[ -n "$NAME" ]] || { echo "--name required" >&2; usage >&2; exit 2; }
+RENDER_NPROC="${RENDER_NPROC:-$NPROC}"
 if [[ -n "$IMAGE" && -n "$PANO" ]]; then
   echo "Provide only one of --image or --panorama" >&2
   exit 2
@@ -75,6 +81,11 @@ fi
 [[ -n "$IMAGE" || -n "$PANO" ]] || { echo "Provide --image or --panorama" >&2; usage >&2; exit 2; }
 
 export HY2_VLLM_SESSION="$VLLM_SESSION"
+source "$HY2_SCRIPT_ROOT/configure_gpu_topology.sh"
+NPROC="${HY2_STAGE04_NPROC:-$NPROC}"
+RENDER_NPROC="${HY2_RENDER_NPROC:-$RENDER_NPROC}"
+STAGE05_NPROC="${HY2_STAGE05_NPROC:-$NPROC}"
+STAGE06_NPROC="${HY2_STAGE06_NPROC:-$NPROC}"
 # Stage02 只在 Qwen3-VL 物体标注时需要 vLLM；标注结束后立刻释放显存，
 # 避免后续 SAM3 / WorldStereo 与 vLLM 抢显存。Stage03 需要视频 caption 时再重启。
 export HY2_RELEASE_VLLM_CMD="${HY2_RELEASE_VLLM_CMD:-tmux kill-session -t ${VLLM_SESSION} 2>/dev/null || true}"
@@ -188,13 +199,13 @@ bash "$HY2_SCRIPT_ROOT/start_vllm_qwen3vl.sh" "$VLLM_SESSION"
 trap cleanup_vllm EXIT
 wait_for_vllm
 
-bash "$HY2_STAGE_ROOT/run_02_worldnav.sh" --name "$NAME" --mode vlm-full --nframe "$NFRAME"
+CUDA_VISIBLE_DEVICES="$HY2_STAGE02_CUDA_VISIBLE_DEVICES" bash "$HY2_STAGE_ROOT/run_02_worldnav.sh" --name "$NAME" --mode vlm-full --nframe "$NFRAME"
 
 tmux kill-session -t "$VLLM_SESSION" 2>/dev/null || true
 bash "$HY2_SCRIPT_ROOT/start_vllm_qwen3vl.sh" "$VLLM_SESSION"
 wait_for_vllm
 
-bash "$HY2_STAGE_ROOT/run_03_traj_render.sh" --name "$NAME" --mode vlm-full --nproc "$NPROC" --expected-nframe "$NFRAME"
+bash "$HY2_STAGE_ROOT/run_03_traj_render.sh" --name "$NAME" --mode vlm-full --nproc "$RENDER_NPROC" --expected-nframe "$NFRAME"
 check_vlm_captions
 cleanup_vllm
 trap - EXIT
@@ -202,7 +213,7 @@ trap - EXIT
 ws_args=(--name "$NAME" --nproc "$NPROC" --align-nframe "$ALIGN_NFRAME" --max-reference "$MAX_REFERENCE")
 [[ "$FSDP" == 1 ]] && ws_args+=(--fsdp)
 bash "$HY2_STAGE_ROOT/run_04_worldstereo.sh" "${ws_args[@]}"
-bash "$HY2_STAGE_ROOT/run_05_gs_data.sh" --name "$NAME" --nproc "$NPROC"
-bash "$HY2_STAGE_ROOT/run_06_train_gs.sh" --name "$NAME" --steps "$STEPS" --nproc "$NPROC"
+CUDA_VISIBLE_DEVICES="$HY2_STAGE05_CUDA_VISIBLE_DEVICES" bash "$HY2_STAGE_ROOT/run_05_gs_data.sh" --name "$NAME" --nproc "$STAGE05_NPROC"
+CUDA_VISIBLE_DEVICES="$HY2_STAGE06_CUDA_VISIBLE_DEVICES" bash "$HY2_STAGE_ROOT/run_06_train_gs.sh" --name "$NAME" --steps "$STEPS" --nproc "$STAGE06_NPROC"
 
 echo "DONE: $HY2_RUN_ROOT/$NAME"

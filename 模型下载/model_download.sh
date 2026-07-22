@@ -15,6 +15,7 @@ FULL_HY_PANO=0
 
 # 这些 repo id 都可以在运行前用环境变量覆盖，方便复现者切到自己的 ModelScope 镜像仓库。
 HY_WORLD_MS_REPO_ID="${HY_WORLD_MS_REPO_ID:-Tencent-Hunyuan/HY-World-2.0}"
+WORLDMIRROR_MS_REPO_ID="${WORLDMIRROR_MS_REPO_ID:-$HY_WORLD_MS_REPO_ID}"
 QWEN_IMAGE_EDIT_MS_REPO_ID="${QWEN_IMAGE_EDIT_MS_REPO_ID:-Qwen/Qwen-Image-Edit-2509}"
 QWEN3_VL_MS_REPO_ID="${QWEN3_VL_MS_REPO_ID:-Qwen/Qwen3-VL-8B-Instruct}"
 WAN_I2V_MS_REPO_ID="${WAN_I2V_MS_REPO_ID:-Wan-AI/Wan2.1-I2V-14B-720P-Diffusers}"
@@ -46,10 +47,11 @@ usage() {
 
 可用名称：
   hy-pano-lora, qwen-image, qwen3-vl, wan-i2v, sam3, dinov2, grounding-dino, moge,
-  worldstereo, uni3c, zim-anything
+  worldmirror, worldstereo, uni3c, zim-anything
 
 可覆盖的下载源变量：
   HY_WORLD_MS_REPO_ID
+  WORLDMIRROR_MS_REPO_ID
   QWEN_IMAGE_EDIT_MS_REPO_ID
   QWEN3_VL_MS_REPO_ID
   WAN_I2V_MS_REPO_ID
@@ -201,6 +203,7 @@ if [[ "$FULL_HY_PANO" == 1 ]]; then
 fi
 
 download_ms "hy-pano-lora" "$HY_WORLD_MS_REPO_ID" "$MODEL_ROOT/HY-World-2.0-modelscope-full" "$HY_PANO_PATTERNS"
+download_ms "worldmirror" "$WORLDMIRROR_MS_REPO_ID" "$MODEL_ROOT/hy-worldmirror" "HY-WorldMirror-2.0/*"
 download_ms "qwen-image" "$QWEN_IMAGE_EDIT_MS_REPO_ID" "$MODEL_ROOT/Qwen-Image-Edit-2509"
 download_ms "qwen3-vl" "$QWEN3_VL_MS_REPO_ID" "$MODEL_ROOT/Qwen3-VL-8B-Instruct"
 download_ms "wan-i2v" "$WAN_I2V_MS_REPO_ID" "$MODEL_ROOT/Wan2.1-I2V-14B-720P-Diffusers"
@@ -208,7 +211,9 @@ download_ms "sam3" "$SAM3_MS_REPO_ID" "$MODEL_ROOT/sam3"
 download_ms "dinov2" "$DINOV2_MS_REPO_ID" "$MODEL_ROOT/dinov2-base"
 download_ms "grounding-dino" "$GROUNDING_DINO_MS_REPO_ID" "$MODEL_ROOT/grounding-dino-tiny"
 download_ms "moge" "$MOGE_MS_REPO_ID" "$MODEL_ROOT/moge-2-vitl-normal"
-download_hf "worldstereo" "$WORLDSTEREO_HF_REPO_ID" "$MODEL_ROOT/worldstereo" "worldstereo-memory-dmd/*"
+# 默认管线使用非 DMD；DMD 仍下载便于回退
+download_hf "worldstereo-memory" "$WORLDSTEREO_HF_REPO_ID" "$MODEL_ROOT/worldstereo" "worldstereo-memory/*"
+download_hf "worldstereo-dmd" "$WORLDSTEREO_HF_REPO_ID" "$MODEL_ROOT/worldstereo" "worldstereo-memory-dmd/*"
 download_hf "uni3c" "$UNI3C_HF_REPO_ID" "$MODEL_ROOT/Uni3C" "controlnet.pth"
 download_ms "zim-anything" "$ZIM_ANYTHING_MS_REPO_ID" "$MODEL_ROOT/zim-anything-vitl"
 
@@ -216,6 +221,8 @@ echo
 echo "== 路径校验 =="
 MISSING_ITEMS=()
 need_file "HY-Pano LoRA" "$MODEL_ROOT/HY-World-2.0-modelscope-full/HY-Pano-2.0/pytorch_lora_weights.safetensors"
+need_file "WorldMirror config" "$MODEL_ROOT/hy-worldmirror/HY-WorldMirror-2.0/config.json"
+need_file "WorldMirror weights" "$MODEL_ROOT/hy-worldmirror/HY-WorldMirror-2.0/model.safetensors"
 need_file "Qwen-Image-Edit model_index" "$MODEL_ROOT/Qwen-Image-Edit-2509/model_index.json"
 need_file "Qwen3-VL config" "$MODEL_ROOT/Qwen3-VL-8B-Instruct/config.json"
 need_file "Wan I2V model_index" "$MODEL_ROOT/Wan2.1-I2V-14B-720P-Diffusers/model_index.json"
@@ -223,6 +230,8 @@ need_file "SAM3 config" "$MODEL_ROOT/sam3/config.json"
 need_file "DINOv2 config" "$MODEL_ROOT/dinov2-base/config.json"
 need_file "GroundingDINO config" "$MODEL_ROOT/grounding-dino-tiny/config.json"
 need_file "MoGe model.pt" "$MODEL_ROOT/moge-2-vitl-normal/model.pt"
+need_file "WorldStereo memory config" "$MODEL_ROOT/worldstereo/worldstereo-memory/config.json"
+need_file "WorldStereo memory weights" "$MODEL_ROOT/worldstereo/worldstereo-memory/model.safetensors"
 need_file "WorldStereo DMD config" "$MODEL_ROOT/worldstereo/worldstereo-memory-dmd/config.json"
 need_file "WorldStereo DMD weights" "$MODEL_ROOT/worldstereo/worldstereo-memory-dmd/model.safetensors"
 need_file "Uni3C controlnet.pth" "$MODEL_ROOT/Uni3C/controlnet.pth"
