@@ -3,7 +3,7 @@
 # launched by the caller in tmux; this script owns a separate vLLM tmux service.
 set -euo pipefail
 
-ROOT="$(cd "$(dirname "$0")" && pwd)"
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 NAME="indoor_library_37490e79769b07beefa29081c791d0ba_dmd"
 PANO="/root/autodl-tmp/data/全景图/37490e79769b07beefa29081c791d0ba.png"
 VLLM_SESSION="hy2_vllm_library_dmd"

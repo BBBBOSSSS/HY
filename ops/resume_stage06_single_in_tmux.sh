@@ -2,7 +2,7 @@
 # Fallback for hosts where two-GPU NCCL initialization hits a CUDA fault.
 set -uo pipefail
 
-ROOT="$(cd "$(dirname "$0")" && pwd)"
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 NAME="indoor_13c504b9a25f646eab0408efcd8835b9_candidate02"
 LOG="$ROOT/logs/stage06-single-repair-20260719.log"
 

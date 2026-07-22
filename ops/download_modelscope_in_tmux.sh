@@ -2,7 +2,7 @@
 # Download the ModelScope-hosted HY2 checkpoints without a proxy.
 set -Eeuo pipefail
 
-ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 TOOLS_VENV="/root/autodl-tmp/_bundle_deps/download-tools"
 LOG_DIR="$ROOT/logs"
 mkdir -p "$LOG_DIR"

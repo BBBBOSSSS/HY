@@ -2,7 +2,7 @@
 # Resume the candidate02 full pipeline after WorldStereo/WorldMirror completed.
 set -uo pipefail
 
-ROOT="$(cd "$(dirname "$0")" && pwd)"
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 NAME="indoor_13c504b9a25f646eab0408efcd8835b9_candidate02"
 LOG="$ROOT/logs/stage05-06-repair-20260719.log"
 

@@ -2,7 +2,7 @@
 # Regenerate resolution-consistent GS data, verify it, then resume training.
 set -uo pipefail
 
-ROOT="$(cd "$(dirname "$0")" && pwd)"
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 NAME="indoor_13c504b9a25f646eab0408efcd8835b9_candidate02"
 RUN_DIR="/root/autodl-tmp/outputs/hy2_worldgen_runs/$NAME"
 LOG="$ROOT/logs/stage05-resolution-stage06-20260719.log"

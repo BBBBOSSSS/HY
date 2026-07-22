@@ -6,6 +6,8 @@
 stages/   阶段启动文件和全链路入口
 scripts/  管线运行时会实际调用的环境和 vLLM shell 工具
 python/   阶段脚本调用的 Python 实现和检查工具
+ops/      tmux 运维、补跑、下载、环境修复（非日常主入口）
+patches/  上游 HY-World 补丁（如 SH 阶梯）
 源码准备/  复现项目用的一键上游源码下载/更新脚本
 conda环境配置/  复现项目用的一键 conda 环境配置脚本
 模型下载/  复现项目用的一键模型下载脚本，不参与运行时链路
@@ -41,6 +43,23 @@ README.md
 
 FILES.md
   当前文件说明，也就是本文档。
+```
+
+
+## ops/
+
+```text
+setup_in_tmux.sh / repair_environment_in_tmux.sh
+  环境安装与修复（在 tmux 中跑）。
+
+download_*_in_tmux.sh
+  模型下载辅助。
+
+resume_* / rerun_*_in_tmux.sh
+  断点续跑 Stage05/06 等。
+
+run_dmd_library_full_in_tmux.sh / test_image_in_tmux.sh / diagnose_vllm_gpu_in_tmux.sh
+  场景实验与诊断。
 ```
 
 ## stages/

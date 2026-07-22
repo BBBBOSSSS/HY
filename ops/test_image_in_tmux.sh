@@ -2,7 +2,7 @@
 # Build the GPU extension for this host, then run the full HY2 image pipeline.
 set -Eeuo pipefail
 
-ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 RUN_NAME="indoor_13c504b9a25f646eab0408efcd8835b9"
 INPUT_IMAGE="/root/autodl-tmp/data/室内图/13c504b9a25f646eab0408efcd8835b9.jpg"
 LOG_DIR="$ROOT/logs"

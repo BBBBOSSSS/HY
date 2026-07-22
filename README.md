@@ -22,6 +22,7 @@ See `FILES.md` for the file-by-file map.
 
 ```text
 stages/   Stage launchers and full-chain entrypoints.
+ops/      Optional tmux ops (resume/download/repair); not primary API.
 scripts/  Runtime shell helpers used by the pipeline: environment activation and vLLM.
 python/   Python helpers used by stages and post-processing tools.
 源码准备/  Reproduction-only upstream source checkout script.

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT="$(cd "$(dirname "$0")" && pwd)"
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 LOG="$ROOT/logs/vllm-gpu-diagnose-20260721.log"
 source "$ROOT/scripts/env.sh"
 export HY2_VLLM_VENV="/root/autodl-tmp/_bundle_deps/conda-envs/vllm_qwen"

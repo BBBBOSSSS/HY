@@ -3,7 +3,7 @@
 # then resume the upstream-recommended one-GPU training path.
 set -uo pipefail
 
-ROOT="$(cd "$(dirname "$0")" && pwd)"
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 NAME="indoor_13c504b9a25f646eab0408efcd8835b9_candidate02"
 LOG="$ROOT/logs/vgg16-stage06-repair-20260719.log"
 CACHE_DIR="/root/.cache/torch/hub/checkpoints"
